@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager Pro - Final Build</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --todo: #9d50f2; --progress: #ff9f1a; --done: #00ca72;
+            --bg: #f4f7f9; --card: #ffffff; --sidebar: #ffffff;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+
+        /* AUTH SECTION */
+        #auth-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .auth-card { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 380px; text-align: center; }
+        .auth-card input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #eee; border-radius: 12px; outline: none; box-sizing: border-box; }
+        .auth-card button { width: 100%; padding: 14px; background: var(--todo); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+
+        /* SIDEBAR */
+        .sidebar { width: 300px; background: var(--sidebar); border-right: 1px solid #e0e0e0; padding: 30px; display: flex; flex-direction: column; gap: 20px; }
+        .profile-section { text-align: center; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .avatar-container { position: relative; width: 80px; margin: 0 auto 15px; cursor: pointer; }
+        .avatar-container:hover::after { content: '✎'; position: absolute; bottom: 0; right: 0; background: var(--todo); color: white; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; line-height: 20px; }
+        .avatar-container img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--todo); background: #eee; }
+        .user-info h3 { margin: 0; font-size: 18px; color: #333; }
+
+        nav { display: flex; flex-direction: column; gap: 5px; flex-grow: 1; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; cursor: pointer; transition: 0.2s; color: #555; font-weight: 500; }
+        .menu-item.active { background: #f4f0ff; color: var(--todo); font-weight: bold; }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
+
+        /* TOOLS BAR (UPDATED) */
+        .tools-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+        .search-input { flex: 2; min-width: 200px; padding: 12px 20px; border-radius: 12px; border: 1px solid #ddd; outline: none; }
+        .filter-select, .filter-date { flex: 1; min-width: 140px; padding: 12px; border-radius: 12px; border: 1px solid #ddd; background: white; cursor: pointer; }
+
+        .daily-essentials { margin-bottom: 30px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        #day-focus { width: 100%; border: none; border-bottom: 2px solid #f0f0f0; padding: 8px 0; font-size: 20px; outline: none; color: #2c3e50; font-weight: 600; }
+        .progress-container { width: 100%; height: 8px; background: #eee; border-radius: 10px; margin-top: 10px; overflow: hidden; }
+        #progress-fill { width: 0%; height: 100%; background: var(--done); transition: 0.8s ease; }
+
+        /* BOARD */
+        .board { display: flex; gap: 20px; align-items: flex-start; flex: 1; }
+        .column { background: #ebedf0; border-radius: 16px; width: 320px; min-height: 450px; display: flex; flex-direction: column; padding-bottom: 15px; }
+        .column-header { padding: 15px; border-radius: 16px 16px 0 0; color: white; font-weight: bold; text-transform: uppercase; font-size: 13px; }
+        .todo-header { background-color: var(--todo); }
+        .progress-header { background-color: var(--progress); }
+        .done-header { background-color: var(--done); }
+
+        .inner-add-btn { background: #fff; border: 1px dashed var(--todo); color: var(--todo); margin: 10px 15px; padding: 10px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+
+        /* TASK CARD */
+        .task-card { background: var(--card); margin: 8px 15px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 4px solid #ddd; position: relative; }
+        .task-title { font-weight: 700; font-size: 15px; color: #2c3e50; margin-bottom: 5px; display: block; }
+        .task-desc { font-size: 12px; color: #777; margin-bottom: 10px; line-height: 1.4; }
+        .task-meta { font-size: 11px; color: #555; margin-bottom: 10px; display: flex; flex-direction: column; gap: 2px; }
+        .task-timestamp { font-size: 9px; color: #aaa; }
+
+        .card-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.5; transition: 0.2s; padding: 0; }
+        .action-btn:hover { opacity: 1; }
+        .star-btn.active { opacity: 1; color: #ffbc00; }
+
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(4px); }
+        .modal-content { background: white; padding: 30px; border-radius: 20px; width: 350px; display: flex; flex-direction: column; gap: 12px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-container">
+        <div id="login-form" class="auth-card">
+            <h2 style="color: var(--todo);">Вход</h2>
+            <input type="text" id="login-user" placeholder="Username">
+            <input type="password" id="login-pass" placeholder="Пароль">
+            <button onclick="handleAuth('login')">Войти</button>
+            <p style="font-size: 12px; color: #888; cursor: pointer; margin-top: 15px;" onclick="toggleAuth(true)">Нет аккаунта? Регистрация</p>
+        </div>
+        <div id="register-form" class="auth-card" style="display: none;">
+            <h2 style="color: var(--todo);">Регистрация</h2>
+            <input type="text" id="reg-user" placeholder="Username">
+            <input type="email" id="reg-email" placeholder="Email">
+            <input type="password" id="reg-pass" placeholder="Пароль (8+ символов)">
+            <input type="password" id="reg-confirm" placeholder="Повторите пароль">
+            <button onclick="handleAuth('register')">Создать аккаунт</button>
+            <p style="font-size: 12px; color: #888; cursor: pointer; margin-top: 15px;" onclick="toggleAuth(false)">Уже есть аккаунт? Войти</p>
+        </div>
+    </div>
+
+    <div id="app-container" style="display: none; width: 100%;">
+        <div class="sidebar">
+            <div class="profile-section">
+                <div class="avatar-container" onclick="document.getElementById('avatar-upload').click()">
+                    <img id="user-avatar" src="https://ui-avatars.com/api/?name=User&background=9d50f2&color=fff">
+                    <input type="file" id="avatar-upload" hidden accept="image/*" onchange="uploadAvatar(this)">
+                </div>
+                <div class="user-info">
+                    <h3 id="user-name">Загрузка...</h3>
+                    <p>Python Developer</p>
+                    <p style="font-size: 11px; color: #bbb; margin-top: 10px;">Активных задач: <span id="active-count" style="color: var(--todo); font-weight: bold;">0</span></p>
+                </div>
+            </div>
+            <nav>
+                <div class="menu-item active" id="m-all" onclick="setFilter('all')">📂 Все задачи</div>
+                <div class="menu-item" id="m-today" onclick="setFilter('today')">☀️ Мой день</div>
+                <div class="menu-item" id="m-fav" onclick="setFilter('fav')">⭐ Избранное</div>
+                <div class="menu-item" id="m-planned" onclick="setFilter('planned')">📅 Запланировано</div>
+                <div class="menu-item" onclick="logout()" style="color: #ff4d4d; margin-top: auto; border-top: 1px solid #eee; padding-top: 10px;">🚪 Выйти</div>
+            </nav>
+        </div>
+
+        <div class="main-content">
+            <div class="tools-bar">
+                <input type="text" class="search-input" id="search-query" placeholder="🔍 Поиск..." oninput="renderBoard()">
+
+                <select class="filter-select" id="filter-status" onchange="renderBoard()">
+                    <option value="all">Все статусы</option>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                </select>
+
+                <input type="date" class="filter-date" id="filter-deadline" onchange="renderBoard()" title="Фильтр по дедлайну">
+                <button onclick="id('filter-deadline').value=''; renderBoard()" style="background:none; border:none; cursor:pointer; color:#888;">✕</button>
+
+                <select class="filter-select" id="sort-type" onchange="renderBoard()">
+                    <option value="newest">Новые</option>
+                    <option value="oldest">Старые</option>
+                    <option value="alphabet">А-Я</option>
+                </select>
+            </div>
+
+            <div class="daily-essentials">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 11px; color: var(--todo); font-weight: bold; text-transform: uppercase;">🎯 Фокус дня</label>
+                        <input type="text" id="day-focus" placeholder="На чем сосредоточишься сегодня?">
+                    </div>
+                    <div style="text-align: right; margin-left: 20px;">
+                        <span style="font-size: 12px; color: #888;">Прогресс: <span id="progress-percent" style="font-weight: bold; color: var(--done);">0%</span></span>
+                        <div class="progress-container"><div id="progress-fill"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board">
+                <div class="column"><div class="column-header todo-header">To do</div><button class="inner-add-btn" onclick="openModal()">+ Add task</button><div id="todo-list"></div></div>
+                <div class="column"><div class="column-header progress-header">In progress</div><div id="in_progress-list"></div></div>
+                <div class="column"><div class="column-header done-header">Done</div><div id="done-list"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <h3 id="modal-title-text">Задача</h3>
+            <input type="hidden" id="task-id">
+            <input type="text" id="title" placeholder="Заголовок">
+            <textarea id="description" rows="3" placeholder="Описание (минимум 10 символов)"></textarea>
+            <input type="date" id="deadline">
+            <button onclick="saveTask()" style="background: var(--todo); color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold;">Сохранить</button>
+            <button onclick="closeModal()" style="background: none; border: none; color: #aaa; cursor: pointer;">Отмена</button>
+        </div>
+    </div>
+
+<script>
+    const BASE_URL = 'http://127.0.0.1:8000';
+    let allTasks = [];
+    let currentFilter = 'all';
+    let favorites = JSON.parse(localStorage.getItem('favs') || "[]");
+
+    function uploadAvatar(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('user-avatar').src = e.target.result;
+                localStorage.setItem('user_photo', e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function toggleAuth(isReg) {
+        id('login-form').style.display = isReg ? 'none' : 'block';
+        id('register-form').style.display = isReg ? 'block' : 'none';
+    }
+
+    async function handleAuth(type) {
+        const url = type === 'login' ? `${BASE_URL}/api/auth/login/` : `${BASE_URL}/api/auth/register/`;
+        const body = type === 'login'
+            ? { username: id('login-user').value, password: id('login-pass').value }
+            : { username: id('reg-user').value, email: id('reg-email').value, password: id('reg-pass').value, password_confirm: id('reg-confirm').value };
+        try {
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (res.ok) {
+                if (type === 'login') {
+                    localStorage.setItem('token', data.access);
+                    localStorage.setItem('username', id('login-user').value);
+                    if (data.user) localStorage.setItem('user_id', data.user.id);
+                    location.reload();
+                } else { alert("Успешно!"); toggleAuth(false); }
+            } else { alert("Ошибка: " + JSON.stringify(data)); }
+        } catch (e) { alert("Сервер недоступен!"); }
+    }
+
+    async function loadTasks() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch(`${BASE_URL}/api/tasks/`, { headers: { 'Authorization': `Bearer ${token}` } });
+            allTasks = await res.json();
+            renderBoard();
+        } catch (e) { console.log("Ошибка загрузки"); }
+    }
+
+    async function saveTask() {
+        const token = localStorage.getItem('token');
+        const taskId = id('task-id').value;
+        const ownerId = localStorage.getItem('user_id');
+        const data = {
+            title: id('title').value, description: id('description').value,
+            deadline: id('deadline').value || new Date().toISOString().split('T')[0],
+            status: 'todo', owner: ownerId
+        };
+        if (data.description.length < 10) return alert("Описание должно быть > 10 символов!");
+        const url = taskId ? `${BASE_URL}/api/tasks/${taskId}/` : `${BASE_URL}/api/tasks/`;
+        const method = taskId ? 'PATCH' : 'POST';
+        try {
+            const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(data) });
+            if (res.ok) { closeModal(); loadTasks(); }
+        } catch (e) { alert("Ошибка сохранения!"); }
+    }
+
+    function renderBoard() {
+        const searchQuery = id('search-query').value.toLowerCase();
+        const sortType = id('sort-type').value;
+        const statusFilter = id('filter-status').value;
+        const deadlineFilter = id('filter-deadline').value;
+
+        let filtered = [...allTasks];
+
+        // Сортировка
+        if (sortType === 'alphabet') filtered.sort((a, b) => a.title.localeCompare(b.title));
+        else if (sortType === 'newest') filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        else filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+        ['todo', 'in_progress', 'done'].forEach(s => id(`${s}-list`).innerHTML = '');
+        let active = 0;
+        const today = new Date().toISOString().split('T')[0];
+
+        filtered.forEach(t => {
+            // ФИЛЬТРЫ
+            if (currentFilter === 'today' && t.deadline !== today) return;
+            if (currentFilter === 'fav' && !favorites.includes(t.id)) return;
+            if (currentFilter === 'planned' && t.deadline <= today) return;
+
+            // Новые фильтры из тулбара
+            if (statusFilter !== 'all' && t.status !== statusFilter) return;
+            if (deadlineFilter && t.deadline !== deadlineFilter) return;
+            if (searchQuery && !t.title.toLowerCase().includes(searchQuery)) return;
+
+            if (t.status !== 'done') active++;
+            const isFav = favorites.includes(t.id);
+            const nextStatus = t.status === 'todo' ? 'in_progress' : (t.status === 'in_progress' ? 'done' : null);
+            const createdDate = t.created_at ? new Date(t.created_at).toLocaleDateString('ru-RU') : '—';
+            const updatedDate = t.updated_at ? new Date(t.updated_at).toLocaleDateString('ru-RU') : '—';
+
+            id(`${t.status}-list`).innerHTML += `
+                <div class="task-card" style="border-left-color: var(--${t.status === 'in_progress' ? 'progress' : (t.status === 'done' ? 'done' : 'todo')})">
+                    <span class="task-title">${t.title}</span>
+                    <p class="task-desc">${t.description}</p>
+                    <div class="task-meta">
+                        <span>📅 Срок: ${t.deadline}</span>
+                        <span class="task-timestamp">➕ Создано: ${createdDate}</span>
+                        <span class="task-timestamp">🔄 Обновлено: ${updatedDate}</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="action-btn star-btn ${isFav ? 'active' : ''}" onclick="toggleFav(${t.id})">⭐</button>
+                        <button class="action-btn" onclick="editTask(${JSON.stringify(t).replace(/"/g, '&quot;')})">✏️</button>
+                        <button class="action-btn" onclick="deleteTask(${t.id})">🗑️</button>
+                        ${nextStatus ? `<button class="action-btn" style="margin-left:auto; font-weight:bold; color:var(--todo)" onclick="updateStatus(${t.id}, '${nextStatus}')">→</button>` : ''}
+                    </div>
+                </div>`;
+        });
+        id('active-count').innerText = active;
+        updateProgress();
+    }
+
+    function editTask(t) { openModal(); id('modal-title-text').innerText = "Изменить задачу"; id('task-id').value = t.id; id('title').value = t.title; id('description').value = t.description; id('deadline').value = t.deadline; }
+    function toggleFav(idNum) { if (favorites.includes(idNum)) favorites = favorites.filter(f => f !== idNum); else favorites.push(idNum); localStorage.setItem('favs', JSON.stringify(favorites)); renderBoard(); }
+    async function updateStatus(idNum, s) { await fetch(`${BASE_URL}/api/tasks/${idNum}/`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ status: s }) }); loadTasks(); }
+    async function deleteTask(idNum) { if (confirm("Удалить?")) { await fetch(`${BASE_URL}/api/tasks/${idNum}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }); loadTasks(); } }
+    function setFilter(f) { currentFilter = f; document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active')); id('m-' + f).classList.add('active'); renderBoard(); }
+    function updateProgress() { const total = allTasks.length; const done = allTasks.filter(t => t.status === 'done').length; const p = total > 0 ? Math.round((done/total)*100) : 0; id('progress-fill').style.width = p + '%'; id('progress-percent').innerText = p + '%'; }
+    function id(name) { return document.getElementById(name); }
+    function openModal() { id('modal').style.display = 'flex'; id('modal-title-text').innerText = "Новая задача"; }
+    function closeModal() { id('modal').style.display = 'none'; id('task-id').value = ""; id('title').value = ""; id('description').value = ""; }
+    function logout() { localStorage.clear(); location.reload(); }
+
+    window.onload = () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            id('auth-container').style.display = 'none';
+            id('app-container').style.display = 'flex';
+            id('user-name').innerText = localStorage.getItem('username');
+            const savedPhoto = localStorage.getItem('user_photo');
+            if (savedPhoto) id('user-avatar').src = savedPhoto;
+            loadTasks();
+        }
+    };
+</script>
+</body>
+</html>
